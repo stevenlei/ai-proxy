@@ -4,11 +4,11 @@
   "type": "module",
   "scripts": {
     "start": "node ./dist/server.js",
-    "dev": "bunx tsx --watch ./server.ts",
-    "build": "bun build ./server.ts ./main.ts --outdir dist --packages external"
+    "dev": "npx tsx --watch ./server.ts",
+    "build": "npx tsc && npx esbuild ./server.ts ./main.ts --bundle --outdir=dist --platform=node --format=esm"
   },
   "devDependencies": {
-    "@types/bun": "latest",
+    "@types/node": "latest",
     "prettier": "^3.5.3",
     "typescript": "^5"
   },
