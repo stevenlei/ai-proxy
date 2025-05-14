@@ -4,9 +4,18 @@ import { zValidator } from "@hono/zod-validator"
 import { z } from "zod"
 import { logger } from "hono/logger"
 import { proxy } from 'hono/proxy'
+import 'dotenv/config'
 
 
 const app = new Hono()
+
+// Get API key from .env
+const API_KEY = process.env.API_KEY
+
+if (!API_KEY) {
+  console.error('API_KEY is not defined in .env file')
+  process.exit(1)
+}
 
 app.use(cors())
 
@@ -17,7 +26,19 @@ app.use(async (c, next) => {
   c.res.headers.set("X-Accel-Buffering", "no")
 })
 
-app.get("/", (c) => c.text("A proxy for AI!"))
+// Root path handler
+app.get("/", (c) => c.text("A proxy for AI! Use /{api_key}/{provider} to access the API."))
+
+// API key validation middleware
+app.use('/:apiKey/*', async (c, next) => {
+  const apiKey = c.req.param('apiKey')
+  
+  if (apiKey !== API_KEY) {
+    return c.text('Unauthorized: Invalid API key', 401)
+  }
+  
+  await next()
+})
 
 const fetchWithTimeout = async (
   url: string,
@@ -92,7 +113,7 @@ const proxies: { pathSegment: string; target: string; orHostname?: string }[] =
   ]
 
 app.post(
-  "/custom-model-proxy",
+  "/:apiKey/custom-model-proxy",
   zValidator(
     "query",
     z.object({
@@ -117,10 +138,14 @@ app.post(
 
 app.use(async (c, next) => {
   const url = new URL(c.req.url)
+  const apiKey = url.pathname.split('/')[1] // This is already validated by the middleware
+
+  // Extract the path without the API key segment
+  const pathWithoutApiKey = '/' + url.pathname.split('/').slice(2).join('/')
 
   const proxy = proxies.find(
     (p) =>
-      url.pathname.startsWith(`/${p.pathSegment}/`) ||
+      pathWithoutApiKey.startsWith(`/${p.pathSegment}/`) ||
       (p.orHostname && url.hostname === p.orHostname),
   )
 
@@ -132,8 +157,9 @@ app.use(async (c, next) => {
     headers.delete('content-length')
     headers.delete('host')
 
+    // Remove both the apiKey and pathSegment from the path when forwarding to the target
     const res = await fetchWithTimeout(
-      `${proxy.target}${url.pathname.replace(
+      `${proxy.target}${pathWithoutApiKey.replace(
         `/${proxy.pathSegment}/`,
         "/",
       )}${url.search}`,
