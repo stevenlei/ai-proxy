@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node ./dist/server.js",
     "dev": "npx tsx --watch ./server.ts",
-    "build": "npx tsc && npx esbuild ./server.ts ./main.ts --bundle --outdir=dist --platform=node --format=esm"
+    "build": "npx tsc && npx esbuild ./server.ts ./main.ts --bundle --outdir=dist --platform=node --format=esm --external:dotenv"
   },
   "devDependencies": {
     "@types/node": "latest",
